@@ -1,0 +1,32 @@
+﻿  DoppelGate.cpp
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(108,9): warning C4477: 'printf' : format string '%x' requires an argument of type 'unsigned int', but variadic argument 1 has type 'ULONGLONG'
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(108,9): message : consider using '%llx' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(108,9): message : consider using '%Ix' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(108,9): message : consider using '%I64x' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(123,9): warning C4477: 'printf' : format string '%x' requires an argument of type 'unsigned int', but variadic argument 1 has type 'ULONGLONG'
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(123,9): message : consider using '%llx' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(123,9): message : consider using '%Ix' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(123,9): message : consider using '%I64x' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(124,9): warning C4477: 'printf' : format string '%x' requires an argument of type 'unsigned int', but variadic argument 1 has type 'ULONGLONG'
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(124,9): message : consider using '%llx' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(124,9): message : consider using '%Ix' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(124,9): message : consider using '%I64x' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(125,9): warning C4477: 'printf' : format string '%x' requires an argument of type 'unsigned int', but variadic argument 1 has type 'ULONGLONG'
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(125,9): message : consider using '%llx' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(125,9): message : consider using '%Ix' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(125,9): message : consider using '%I64x' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(126,9): warning C4477: 'printf' : format string '%x' requires an argument of type 'unsigned int', but variadic argument 1 has type 'ULONGLONG'
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(126,9): message : consider using '%llx' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(126,9): message : consider using '%Ix' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(126,9): message : consider using '%I64x' in the format string
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(214,12): warning C4477: 'printf' : format string '%02X' requires an argument of type 'unsigned int', but variadic argument 1 has type 'PVOID'
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(214,12): warning C4313: 'printf': '%X' in format string conflicts with argument 1 of type 'PVOID'
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(353,22): warning C4244: 'initializing': conversion from 'SIZE_T' to 'DWORD', possible loss of data
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(297,14): warning C4101: 'pLoadModule1': unreferenced local variable
+C:\Dev\DoppelGate\DoppelGate\DoppelGate\DoppelGate.cpp(298,8): warning C4101: 'ImageBase': unreferenced local variable
+  Generating code
+  1 of 8 functions (12.5%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  DoppelGate.vcxproj -> C:\Dev\DoppelGate\DoppelGate\x64\Release\DoppelGate.exe
