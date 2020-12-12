@@ -11,7 +11,7 @@ In addition, a lot of this code came directly from https://www.ired.team/miscell
 If you glance at the projects above, you'll notice that the techniques commonly used include hard-coding syscalls, reading ntdll.dll that is already loaded into the modules, dual loading a section with a fresh copy of ntdll, and reading ntdll directly from disk.  This method aims to do the final mentioned approach (read ntdll directly from disk, and then parse through it in memory to pull out syscalls), but with a slight twist.  
 
 ## Methodology
-There was a technique called Process Doppelganging which came out in 2017, and relied on making use of Microsoft NTFS Transactions (TxF) to perform remote process injection.  The idea was that code could be written to a process memory space, mapped, and then removed before any changes were "committed" - in essence malicious code would never touch disk.  Although this technique has been around for several years, I wondered if NTFS Transactions could be abused in other ways.  After some experimentation, I found that TxF can be used to grab the file handle for ntdll while avoiding NtOpenFile (it does rely on NtCreateFile however).  I tested out and have included two generalized approaches for this method to work, combining this with the way that Hell's Gate does its dynamic patching of the system calls - hence the name DoppelGate.  Three overall approaches could be utilized for this method. 
+There was a technique called Process Doppelganging which came out in 2017, and relied on making use of Microsoft NTFS Transactions (TxF) to perform remote process injection (see https://www.blackhat.com/docs/eu-17/materials/eu-17-Liberman-Lost-In-Transaction-Process-Doppelganging.pdf).  The idea was that code could be written to a process memory space, mapped, and then removed before any changes were "committed" - in essence malicious code would never touch disk.  Although this technique has been around for several years, I wondered if NTFS Transactions could be abused in other ways.  After some experimentation, I found that TxF can be used to grab the file handle for ntdll while avoiding NtOpenFile (it does rely on NtCreateFile however).  I tested out and have included two generalized approaches for this method to work, combining this with the way that Hell's Gate does its dynamic patching of the system calls - hence the name DoppelGate.  Three overall approaches could be utilized for this method. 
 
 1.  Read the handle for ntdll.dll directly using CreateFileTransactedA, and then call NtReadFile on that handle.  Parse the bytes from NtReadFile directly.
 
@@ -192,7 +192,12 @@ I will try to upload photos of these results later.
 I am very open to receiving comments and to collaboration!  I know this is not the best or cleanest code in the world, but it certainly was a fun project to work on!  Hopefully this helps generate useful discussion around the topic of userland unhooking, or provides researchers some new insights.  
 
 ## Shout Outs
-Shout out to Solomon Sklash (who has a great blog with lots of great info, located here: https://www.solomonsklash.io) who helped me understand many pieces of this puzzle, especially RVA offsets and who brought NTFS transactions to my attention in the first place, am0nsec (who helped me digest and understand Hell's Gate, as well as parsing a PE directly in memory), and thewover, who always answers my millions of questions with the utmost patience!  
+
+**Solomon Sklash** who has a great blog with lots of great info, located here: https://www.solomonsklash.io) who helped me understand many pieces of this puzzle, especially RVA offsets, and who brought NTFS transactions to my attention in the first place
+
+**am0nsec** who helped me digest and understand Hell's Gate, as well as helping explain RVA offsets when parsing a PE directly in memory
+
+**thewover** who always answers my millions of questions with the utmost patience 
 
 
 
