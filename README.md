@@ -201,5 +201,8 @@ Special thanks to:
 
 **thewover** who always answers my millions of questions with the utmost patience 
 
+## Social Media
+Feel free to message me with questions about DoppelGate on the BloodHoundGang slack, my handle is AsaurusRex
+
 
 
