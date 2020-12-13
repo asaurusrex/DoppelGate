@@ -208,4 +208,4 @@ Feel free to message me with questions about DoppelGate on the BloodHoundGang sl
 
 
 ## Future Ideas
-The quest continutes to find a way to dynamically fetch syscalls from ntdll on-disk without calling NtReadFile, NtMapViewofSection, NtCreateSection, or NtCreateFile.  If someone comes up with an alternate way to do this, please let me know!
+The quest continues to find a way to dynamically fetch syscalls from ntdll on-disk without calling NtReadFile, NtMapViewofSection, NtCreateSection, or NtCreateFile.  If someone comes up with an alternate way to do this, please let me know!
