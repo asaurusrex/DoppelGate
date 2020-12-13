@@ -21,7 +21,7 @@ As pointed out by others in their various blog posts/projects, the problem with 
 
 Additionally, when calling functions with DoppelGate, leaving the desired functions in plaintext is not ideal from an opsec perspective.  If you can provide some custom encoding/encryption method for the function names, it would greatly help with anti-forensics/potentially EDR evasion. 
 
-NOTE:  DoppelGate does not rely on CreateFileMapping to map the bytes from ntdll into memory, but parses through the PE in memory directly.  This requires slightly more work, and was definitely a fun challenge.
+NOTE:  DoppelGate does not rely on CreateFileMapping to map the bytes from ntdll into memory, but parses through the PE in memory directly.  This requires slightly more work, and was definitely a fun challenge.  This enables us to avoid calling NtCreateSection and NtMapViewofSection, and only rely on NtReadFile.  
 
 If you are interested in the technical details, please proceed to the Technical Nitty Gritty section below.
 
@@ -207,4 +207,5 @@ Special thanks to:
 Feel free to message me with questions about DoppelGate on the BloodHoundGang slack, my handle is AsaurusRex
 
 
-
+## Future Ideas
+The quest continutes to find a way to dynamically fetch syscalls from ntdll on-disk without calling NtReadFile, NtMapViewofSection, NtCreateSection, or NtCreateFile.  If someone comes up with an alternate way to do this, please let me know!
