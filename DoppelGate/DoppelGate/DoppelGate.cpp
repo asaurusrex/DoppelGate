@@ -302,6 +302,15 @@ int retrieve_syscall(LPVOID fileData, PVX_TABLE_ENTRY pVxTableEntry, const char*
 		printf("\nNo export section detected, exiting...");
 		exit(EXIT_FAILURE);
 	}
+	//check if function exists in ntdll -> NtAccessCheck syscall is supposed to be 0, others are not
+	if (strcmp("NtAccessCheck", FunctionName) != 0)
+	{
+		if (pVxTableEntry->wSystemCall == 0)
+		{
+			printf("%s does not seem to exist in ntdll;\n", FunctionName);
+			return -1;
+		}
+	}
 	return pVxTableEntry->wSystemCall;  //this is for debugging, this can be changed to any int
 }
 
@@ -414,7 +423,9 @@ int main(int argc, char** argv) {
 	wprintf(L"Status is %X", status);
 	
 
-	
+	//Example when a function does not exist in ntdll
+	function = "NtCopyFile";
+	retrieve_syscall(fileData, &Table.NtCopyFile, function);
 	
 	
 	//NTSTATUS status;
