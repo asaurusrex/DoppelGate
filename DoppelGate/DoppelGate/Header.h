@@ -62,7 +62,8 @@ typedef struct _PEB {
 
 typedef struct _VX_TABLE_ENTRY { PVOID   pAddress;     DWORD64 dwHash;     WORD    wSystemCall; } VX_TABLE_ENTRY, * PVX_TABLE_ENTRY;
 
-typedef struct _VX_TABLE {  VX_TABLE_ENTRY NtAllocateVirtualMemory; VX_TABLE_ENTRY NtRollbackTransaction; } VX_TABLE, * PVX_TABLE; //I left an extra function in here on purpose, so that it is easy to see how to add any nt function
+//NtCopyFile does not exist, but is used for demo purposes of what happens if a function does not exist in ntdll
+typedef struct _VX_TABLE {  VX_TABLE_ENTRY NtAllocateVirtualMemory; VX_TABLE_ENTRY NtRollbackTransaction; VX_TABLE_ENTRY NtCopyFile; } VX_TABLE, * PVX_TABLE; //I left an extra function in here on purpose, so that it is easy to see how to add any nt function
 
 typedef struct _TEB {
 	PVOID Reserved1[12];
