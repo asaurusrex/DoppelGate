@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 */
 
 #include "Header.h"
-#include "Syswhispers.h"
+//#include "Syswhispers.h" not needed unless that part of project is included - recommend using SysWhispers 2-3, not Syswhispers 1
 
 
 
@@ -314,9 +314,133 @@ int retrieve_syscall(LPVOID fileData, PVX_TABLE_ENTRY pVxTableEntry, const char*
 	return pVxTableEntry->wSystemCall;  //this is for debugging, this can be changed to any int
 }
 
+
+ULONG_PTR Fetch_Random_Sys() //fetch the address of a syscall instruction for a random unhooked function inside ntdll in-mem
+{
+	unsigned char __readgsbyte(
+		unsigned long Offset
+	);
+	unsigned short __readgsword(
+		unsigned long Offset
+	);
+	unsigned long __readgsdword(
+		unsigned long Offset
+	);
+	unsigned __int64 __readgsqword(
+		unsigned long Offset
+	);
+
+	//x64
+	PPEB Peb = (PPEB)__readgsqword(0x60);
+
+	//x86
+	//PPEB Peb = (PPEB)__readgsqword(0x30);
+
+	PLDR_MODULE pLoadModule1;
+	PBYTE ImageBase;
+	PIMAGE_DOS_HEADER Dos = NULL;
+	PIMAGE_NT_HEADERS Nt = NULL;
+	PIMAGE_FILE_HEADER File = NULL;
+	PIMAGE_OPTIONAL_HEADER Optional = NULL;
+	PIMAGE_EXPORT_DIRECTORY ExportTable = NULL;
+	LIST_ENTRY* pLoadModule = Peb->LoaderData->InMemoryOrderModuleList.Flink;
+	pLoadModule1 = (PLDR_MODULE)((PBYTE)pLoadModule - 0x10);
+
+	while (_wcsicmp(pLoadModule1->FullDllName.Buffer, L"C:\\Windows\\SYSTEM32\\ntdll.dll") != 0) //case insenstive search for ntdll module
+	{
+		pLoadModule = pLoadModule->Flink;
+		pLoadModule1 = (PLDR_MODULE)((PBYTE)pLoadModule - 0x10);
+		//wprintf(L"\nOur module is: %ls\n", pLoadModule1->FullDllName.Buffer);
+	}
+
+	wprintf(L"Our final module is: %ls\n", pLoadModule1->FullDllName.Buffer);
+
+
+	ImageBase = (PBYTE)pLoadModule1->BaseAddress;
+
+	Dos = (PIMAGE_DOS_HEADER)ImageBase;
+	if (Dos->e_magic != IMAGE_DOS_SIGNATURE)
+		return 1;
+
+	Nt = (PIMAGE_NT_HEADERS)((PBYTE)Dos + Dos->e_lfanew);
+
+	File = (PIMAGE_FILE_HEADER)(ImageBase + (Dos->e_lfanew + sizeof(DWORD)));
+
+	Optional = (PIMAGE_OPTIONAL_HEADER)((PBYTE)File + sizeof(IMAGE_FILE_HEADER));
+
+	ExportTable = (PIMAGE_EXPORT_DIRECTORY)(ImageBase + Optional->DataDirectory[0].VirtualAddress);
+
+
+	PIMAGE_DOS_HEADER pImageDosHeader = (PIMAGE_DOS_HEADER)ImageBase;
+	if (pImageDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+	{
+		return FALSE;
+	}
+
+	PIMAGE_NT_HEADERS pImageNtHeaders = (PIMAGE_NT_HEADERS)((PBYTE)ImageBase + pImageDosHeader->e_lfanew);
+	if (pImageNtHeaders->Signature != IMAGE_NT_SIGNATURE)
+	{
+		return FALSE;
+	}
+
+	PIMAGE_DATA_DIRECTORY pDataDirectory = NULL;
+	PIMAGE_EXPORT_DIRECTORY pImageExportDirectory = NULL;
+
+	pDataDirectory = (PIMAGE_DATA_DIRECTORY)&pImageNtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+	pImageExportDirectory = (PIMAGE_EXPORT_DIRECTORY)(ImageBase + pDataDirectory->VirtualAddress);
+
+	PDWORD pdwAddressOfFunctions = (PDWORD)((PBYTE)ImageBase + pImageExportDirectory->AddressOfFunctions);
+	PDWORD pdwAddressOfNames = (PDWORD)((PBYTE)ImageBase + pImageExportDirectory->AddressOfNames);
+	PWORD pwAddressOfNameOrdinales = (PWORD)((PBYTE)ImageBase + pImageExportDirectory->AddressOfNameOrdinals);
+	
+			WORD cw = 0;
+			WORD cx = 0;
+			while (TRUE) {
+				std::random_device rd;
+				std::default_random_engine eng(rd());
+				std::uniform_int_distribution<int> distr(0, 450); //pick one of the first 450 functions to appear in NTDLL
+				cx = distr(eng);
+			PCHAR pczFunctionName = (PCHAR)((PBYTE)ImageBase + pdwAddressOfNames[cx]);
+			PVOID pFunctionAddress = (PBYTE)ImageBase + pdwAddressOfFunctions[pwAddressOfNameOrdinales[cx]];
+
+				
+
+				// First opcodes should be :
+				//    MOV R10, RCX
+				//    MOV RCX, <syscall>
+			//Check this first to confirm function is not hooked in memory module ntdll - we want to use unhooked function return addresses
+				if (*((PBYTE)pFunctionAddress + cw) == 0x4c
+					&& *((PBYTE)pFunctionAddress + 1 + cw) == 0x8b
+					&& *((PBYTE)pFunctionAddress + 2 + cw) == 0xd1
+					&& *((PBYTE)pFunctionAddress + 3 + cw) == 0xb8)
+				{
+					
+					printf("Function is %s\n", pczFunctionName); //display our unhooked function name
+					int i = 0;
+					while (TRUE)
+					{
+						
+						if (*((PBYTE)pFunctionAddress + i) == 0x0f && *((PBYTE)pFunctionAddress + i + 1) == 0x05) //this corresponds to the syscall instruction
+						{
+							ULONG_PTR sys_addr = ULONG_PTR(pFunctionAddress) + i;
+							return sys_addr;
+						}
+						i++;
+					}
+
+					break;
+				}
+
+				cw++;
+		
+	}
+	return TRUE;
+}
+
 int main(int argc, char** argv) {
 
 	// This section is to define x86/x64 requirements, following Hell's Gate model
+	// right now only x64 version works, may add x86 in the future
 
 	unsigned char __readgsbyte(
 		unsigned long Offset
@@ -372,10 +496,6 @@ int main(int argc, char** argv) {
 
 
 	//Get size from above as an alternative to using GetFileSizeEx
-
-	
-	
-	
 
 	//Technique 2: Create transacted file from ntdll to get a file handle to use for ReadFile - this avoids OpenFile on ntdll. It does NOT avoid NtCreateFile
 
