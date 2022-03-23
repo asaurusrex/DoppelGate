@@ -44,6 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 #include <windows.h>
 #include <stdint.h>
 #include <string>
+#include <random>
 
 //#include "winternl.h"
 #pragma comment(lib, "ntdll.lib") //this is included to call our earlier nt functions, such as NtReadFile, NtCreateTransaction, etc.  For opsec you should use some other unhooking method to unhook these functions before you call them.
@@ -191,3 +192,5 @@ EXTERN_C NTSTATUS NtCreateTransaction(
 EXTERN_C NTSTATUS NtClose(
 	HANDLE handle
 );
+
+EXTERN_C ULONG_PTR Fetch_Random_Sys(); //this must be defined here to call in .asm file, function to fetch address of random nt function inside in-mem ntdll to avoid return address suspicion after unhooking
