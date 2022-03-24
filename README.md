@@ -23,16 +23,20 @@ Additionally, when calling functions with DoppelGate, leaving the desired functi
 
 NOTE:  DoppelGate does not rely on CreateFileMapping to map the bytes from ntdll into memory, but parses through the PE in memory directly.  This requires slightly more work, and was definitely a fun challenge.  This enables us to avoid calling NtCreateSection and NtMapViewofSection, and only rely on NtReadFile.  
 
+NOTE: As a recent change, I decided to implement randomized jumps to unhooked functions inside of in-memory ntdll for our syscall instruction.  I was inspired by SysWhispers3 and the amazing work done by klezVirus.  In particular, I recommend you read the blog post here: https://klezvirus.github.io/RedTeaming/AV_Evasion/NoSysWhisper/.
+The only major addition I made was to make sure the function we jump to is also unhooked.
+
 If you are interested in the technical details, please proceed to the Technical Nitty Gritty section below.
 
 
 ## Detection/Prevention
 If defense products are tuned to prevent NTFS Transactions or flag on them (similar to Process Doppelganging, especially on CreateFileTransacted and CopyFileTranscated), that would provide insight into/prevent this method (at least the first two approaches) being used.  As mentioned previously, hooks on NtReadFile will also prevent this technique, unless other obfuscation is used, as it is odd to load ntdll directly from disk.
+I have not seen a single EDR product thus far which hooks NtReadFile -> if they do, you can consider using NtReadFileScatter vs NtReadFile.  
 
 Other defenses would need to rely on detecting userland unhooking via kernel hooks, such as discussed on https://www.crummie5.club/freshycalls/#and-finally-our-library regarding the ScyllaHide repo, or some other kernel hooks.  
 
 ## Testing 
-This technique has mostly been tested on various versions of Windows 10, please feel free to test on any version of Windows >= Windows Vista (Transactions were not introduced until Windows Vista).  This approach SHOULD work on x86 and x64.  Let me know if you have any errors.
+This technique has mostly been tested on various versions of Windows 10, please feel free to test on any version of Windows >= Windows Vista (Transactions were not introduced until Windows Vista).  This approach works on x64. I may build an x86 compatible version in the future.  Let me know if you have any errors.
 
 
 ## Technical Nitty Gritty
@@ -172,6 +176,88 @@ DWORD importDirectoryRVA = imageNTHeaders->OptionalHeader.DataDirectory[IMAGE_DI
 
 					i++;
 ```
+After the syscall is retrieved for our desired Nt function, we then utilize the new Function I wrote to fetch random unhooked function addresses for syscall instructions: Fetch_Random_Sys.
+Essentially, it looks weird to an EDR/any defensive product watching if the syscall instruction being called does NOT come from inside of the in-memory loaded module ntdll, since that is theoretically where it SHOULD always be called from the perspective of security products.
+The crawling of the PEB is very similar to above; however, this time, since we need to find an adress inside of IN-MEMORY ntdll, we need to load the proper module and crawl that (vs our on-disk ntdll bytes). This is achieved with the following code:
+
+```
+//x64
+	PPEB Peb = (PPEB)__readgsqword(0x60);
+
+	//x86
+	//PPEB Peb = (PPEB)__readgsqword(0x30);
+
+	PLDR_MODULE pLoadModule1;
+	PBYTE ImageBase;
+	PIMAGE_DOS_HEADER Dos = NULL;
+	PIMAGE_NT_HEADERS Nt = NULL;
+	PIMAGE_FILE_HEADER File = NULL;
+	PIMAGE_OPTIONAL_HEADER Optional = NULL;
+	PIMAGE_EXPORT_DIRECTORY ExportTable = NULL;
+	LIST_ENTRY* pLoadModule = Peb->LoaderData->InMemoryOrderModuleList.Flink;
+	pLoadModule1 = (PLDR_MODULE)((PBYTE)pLoadModule - 0x10);
+
+	while (_wcsicmp(pLoadModule1->FullDllName.Buffer, L"C:\\Windows\\SYSTEM32\\ntdll.dll") != 0) //case insenstive search for ntdll module
+	{
+		pLoadModule = pLoadModule->Flink;
+		pLoadModule1 = (PLDR_MODULE)((PBYTE)pLoadModule - 0x10);
+		//wprintf(L"\nOur module is: %ls\n", pLoadModule1->FullDllName.Buffer);
+	}
+
+	wprintf(L"Our final module is: %ls\n", pLoadModule1->FullDllName.Buffer);
+
+
+	ImageBase = (PBYTE)pLoadModule1->BaseAddress;
+```
+As you can see, this code looks for the in-memory module ntdll with a case insensitive search (normally the ntdll loaded memory module is the second in the loaded order, but defensive products might try to randomize the load order).
+We can then crawl the PEB from the base address of the loaded ntdll module in the same way we did to find our syscall.  
+
+The other major difference is that we check for hooked functions, and we find the address of an unhooked function:
+```
+WORD cw = 0;
+			WORD cx = 0;
+			while (TRUE) {
+				std::random_device rd;
+				std::default_random_engine eng(rd());
+				std::uniform_int_distribution<int> distr(0, 450); //pick one of the first 450 functions to appear in NTDLL
+				cx = distr(eng);
+			PCHAR pczFunctionName = (PCHAR)((PBYTE)ImageBase + pdwAddressOfNames[cx]);
+			PVOID pFunctionAddress = (PBYTE)ImageBase + pdwAddressOfFunctions[pwAddressOfNameOrdinales[cx]];
+
+				
+
+				// First opcodes should be :
+				//    MOV R10, RCX
+				//    MOV RCX, <syscall>
+			//Check this first to confirm function is not hooked in memory module ntdll - we want to use unhooked function return addresses
+				if (*((PBYTE)pFunctionAddress + cw) == 0x4c
+					&& *((PBYTE)pFunctionAddress + 1 + cw) == 0x8b
+					&& *((PBYTE)pFunctionAddress + 2 + cw) == 0xd1
+					&& *((PBYTE)pFunctionAddress + 3 + cw) == 0xb8)
+				{
+					
+					printf("Function is %s\n", pczFunctionName); //display our unhooked function name
+					int i = 0;
+					while (TRUE)
+					{
+						
+						if (*((PBYTE)pFunctionAddress + i) == 0x0f && *((PBYTE)pFunctionAddress + i + 1) == 0x05) //this corresponds to the syscall instruction
+						{
+							ULONG_PTR sys_addr = ULONG_PTR(pFunctionAddress) + i;
+							return sys_addr;
+						}
+						i++;
+					}
+
+					break;
+				}
+
+				cw++;
+```
+We look at the first four bytes of the function to determine if the function is hooked (if it is, there will be some sort of jmp instruction there and our normal setup bytes of \x4c\x8b\xd1\xb8 will not all line up - this is also how Probatorum checks for hooks).
+We then look for the opcode bytes for syscall, which correspond to \x0f\x05.  Once we find these bytes, we know we have arrived at the address of the syscall instruction for our hooked function.  We save this address, which we will then jmp to when the time comes for our syscall ret instructions (ret occurs after the syscall).
+This way, our syscall ret will be located inside of in-memory ntdll, just as EDR expects.
+
 
 I have tried to comment my code as much as I can, so hopefully that will help with following it.  If you have any questions, please feel free to give me a shout.  
 
@@ -191,11 +277,13 @@ I am very open to receiving comments and to collaboration!  Hopefully this helps
 
 ## Acknowledgements
 
-Many great projects have recently covered this topic, including the Hell's Gate Project (https://github.com/am0nsec/HellsGate), Freshycalls (https://github.com/Crummie5/Freshycalls_PoC/, https://www.crummie5.club/freshycalls/#and-finally-our-library), ShellyCoat (https://github.com/slaeryan/AQUARMOURY/blob/master/Shellycoat/README.md), and the SysWhispers project (https://github.com/jthuraisamy/SysWhispers).  A great explanation of unhooking based on mapping a clean copy of ntdll over a hooked one can be found at (https://www.solomonsklash.io/pe-parsing-defeating-hooking.html).  This, as well as the Hell's Gate paper, does a great job at walking users through PE parsing and what it will accomplish - a lot of DoppelGate code is borrowed directly from Hell's Gate.    
+Many great projects have recently covered this topic, including Syswhispers3 (https://github.com/klezVirus/SysWhispers3), the Hell's Gate Project (https://github.com/am0nsec/HellsGate), Freshycalls (https://github.com/Crummie5/Freshycalls_PoC/, https://www.crummie5.club/freshycalls/#and-finally-our-library), ShellyCoat (https://github.com/slaeryan/AQUARMOURY/blob/master/Shellycoat/README.md), and the SysWhispers project (https://github.com/jthuraisamy/SysWhispers).  A great explanation of unhooking based on mapping a clean copy of ntdll over a hooked one can be found at (https://www.solomonsklash.io/pe-parsing-defeating-hooking.html).  This, as well as the Hell's Gate paper, does a great job at walking users through PE parsing and what it will accomplish - a lot of DoppelGate code is borrowed directly from Hell's Gate.    
 
 In addition, a lot of this code came directly from https://www.ired.team/miscellaneous-reversing-forensics/pe-file-header-parser-in-c++, which gave an amazing demonstration of how to parse a PE directly in memory, with no CreateFileMapping calls.  Ired.team has a TON of great content, and I highly highly recommend them as a resource on learning various offensive techniques.  
 
 Special thanks to:
+
+**KlezVirus** who has a great blog post on the topic of randomized jumps into ntdll. See https://klezvirus.github.io/RedTeaming/AV_Evasion/NoSysWhisper/ 
 
 **Solomon Sklash** who has a great blog with lots of great info, located here: https://www.solomonsklash.io) who helped me understand many pieces of this puzzle, especially RVA offsets, and who brought NTFS transactions to my attention in the first place
 
@@ -208,4 +296,4 @@ Feel free to message me with questions about DoppelGate on the BloodHoundGang sl
 
 
 ## Future Ideas
-The quest continues to find a way to dynamically fetch syscalls from ntdll on-disk without calling NtReadFile, NtMapViewofSection, NtCreateSection, or NtCreateFile.  If someone comes up with an alternate way to do this, please let me know!
+One of these days I might implement this code to also work with x86, if people want it.  
